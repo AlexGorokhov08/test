@@ -28,10 +28,7 @@ let lastTouchStart = 0;
 let initialDistance = 0;
 let currentDistance = 0;
 let scaleFactor = 1;
-let isPinching = false;
 let isFullImageStateAdded = false;
-let imgCenterX = 0;
-let imgCenterY = 0;
 
 // Функция для активации выбранной темы
 function activateTheme(themeClass, bodyColor, stringColor) {
@@ -453,7 +450,7 @@ function zoomFullImage(imgElement) {
     const rect = imgElement.getBoundingClientRect();
     const offsetX = window.innerWidth / 2 - rect.left;
     const offsetY = window.innerHeight / 2 - rect.top;
-    const scale = 2;
+    const scale = 2.5;
 
     imgElement.style.transition = "transform 0.3s ease-in-out";
     imgElement.style.transformOrigin = `${offsetX}px ${offsetY}px`;

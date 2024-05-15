@@ -343,24 +343,6 @@ input:checked + .slider:before {
   animation: animloader 1s linear infinite alternate;
 }
 
-.full-image {
-  transition: transform 0.3s ease-in-out;
-  transform-origin: center center;
-}
-
-.full-image.zoomed {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(2);
-  z-index: 10;
-  opacity: 1;
-}
-
-.full-image.reset {
-  transform: translate(-50%, -50%) scale(1);
-}
-
 .full-image.zoomed:hover {
   cursor: zoom-in;
 }
