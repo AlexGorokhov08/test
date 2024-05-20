@@ -287,24 +287,14 @@ function openFullImage(src) {
   imgElement.classList.add("full-image");
   imgElement.style.cursor = "zoom-in";
 
-  imgElement.addEventListener("touchmove", (e) => {
-    if (!isDragging && imgElement.classList.contains("zoomed")) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const offsetX = touch.clientX - startX;
-      const offsetY = touch.clientY - startY;
+  let initialTouches = [];
+  let initialScale = 1;
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startOffsetX = 0;
+  let startOffsetY = 0;
 
-      imgElement.style.left = startOffsetX + offsetX + "px";
-      imgElement.style.top = startOffsetY + offsetY + "px";
-    }
-  });
-
-  // Обработчик двойного клика для увеличения/уменьшения изображения
-  imgElement.addEventListener("dblclick", () => {
-    zoomFullImage(imgElement);
-  });
-
-  // Обработчики для перемещения изображения на сенсорных устройствах
   imgElement.addEventListener("touchstart", (e) => {
     const currentTime = new Date().getTime();
     const tapLength = currentTime - lastTouchStart;
@@ -320,11 +310,17 @@ function openFullImage(src) {
       return;
     }
 
-    const touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
-    startOffsetX = imgElement.offsetLeft;
-    startOffsetY = imgElement.offsetTop;
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startOffsetX = imgElement.offsetLeft;
+      startOffsetY = imgElement.offsetTop;
+    } else if (e.touches.length === 2) {
+      initialTouches = Array.from(e.touches);
+      initialScale = scaleFactor;
+      initialDistance = getDistanceBetweenTouches(e.touches);
+    }
   });
 
   imgElement.addEventListener("touchmove", (e) => {
@@ -334,42 +330,17 @@ function openFullImage(src) {
       return;
     }
 
-    // Если два касания, то вычисляем расстояние между ними для увеличения/уменьшения изображения
-    if (e.touches.length >= 2) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const currentX = (touch1.clientX + touch2.clientX) / 2;
-      const currentY = (touch1.clientY + touch2.clientY) / 2;
-      const currentDistance = Math.sqrt(
-        Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2),
-      );
-      const startDistance = Math.sqrt(
-        Math.pow(touch1.clientX - touch2.clientX, 2) +
-          Math.pow(touch1.clientY - touch2.clientY, 2),
-      );
-      const scale = currentDistance / startDistance;
-
-      // Увеличиваем/уменьшаем изображение в соответствии с масштабом
-      imgElement.style.width = `${imgElement.offsetWidth * scale}px`;
-      imgElement.style.height = `${imgElement.offsetHeight * scale}px`;
-
-      // Обновляем начальные координаты и смещение для корректного перемещения изображения
-      startX = currentX;
-      startY = currentY;
-      startOffsetX = imgElement.offsetLeft;
-      startOffsetY = imgElement.offsetTop;
-
-      // Вычисляем новые координаты для центрирования изображения
-      const offsetX = startX - (startX - startOffsetX) * scale;
-      const offsetY = startY - (startY - startOffsetY) * scale;
-      imgElement.style.left = `${offsetX}px`;
-      imgElement.style.top = `${offsetY}px`;
-    } else {
+    if (e.touches.length === 1) {
       const touch = e.touches[0];
       const offsetX = touch.clientX - startX;
       const offsetY = touch.clientY - startY;
       imgElement.style.left = startOffsetX + offsetX + "px";
       imgElement.style.top = startOffsetY + offsetY + "px";
+    } else if (e.touches.length === 2) {
+      const currentDistance = getDistanceBetweenTouches(e.touches);
+      const scale = (currentDistance / initialDistance) * initialScale;
+      scaleFactor = Math.max(1, Math.min(scale, 3)); // Ограничение масштаба от 1 до 3
+      imgElement.style.transform = `scale(${scaleFactor})`;
     }
   });
 
@@ -402,11 +373,9 @@ function openFullImage(src) {
     isDragging = false;
   });
 
-  // Обработчик закрытия на крестик полноразмерного изображения
-  close.addEventListener("click", () => {
-    imgElement.classList.remove("scale");
-    closeFullImages();
-    history.back();
+  // Обработчик двойного клика для увеличения/уменьшения изображения
+  imgElement.addEventListener("dblclick", () => {
+    zoomFullImage(imgElement);
   });
 
   // Обработчик загрузки изображения
@@ -416,7 +385,12 @@ function openFullImage(src) {
     close.style.display = "flex";
   });
 
-  // Добавляем изображение в массив полноразмерных изображений и в галерею
+  close.addEventListener("click", () => {
+    imgElement.classList.remove("scale");
+    closeFullImages();
+    history.back();
+  });
+
   fullImages.push(imgElement);
   gallery.appendChild(imgElement);
 
@@ -435,6 +409,14 @@ window.addEventListener("popstate", function (event) {
   }
 });
 
+function getDistanceBetweenTouches(touches) {
+  const [touch1, touch2] = touches;
+  return Math.sqrt(
+    Math.pow(touch2.clientX - touch1.clientX, 2) +
+      Math.pow(touch2.clientY - touch1.clientY, 2),
+  );
+}
+
 // Функция увеличения/уменьшения полноразмерного изображения
 function zoomFullImage(imgElement) {
   if (imgElement.classList.contains("zoomed")) {
@@ -445,6 +427,7 @@ function zoomFullImage(imgElement) {
     imgElement.style.top = "50%";
     imgElement.style.left = "50%";
     imgElement.classList.remove("zoomed");
+    scaleFactor = 1; // Сбрасываем масштаб
   } else {
     imgElement.style.cursor = "move";
     const rect = imgElement.getBoundingClientRect();
@@ -456,6 +439,7 @@ function zoomFullImage(imgElement) {
     imgElement.style.transformOrigin = `${offsetX}px ${offsetY}px`;
     imgElement.style.transform = `translate(-${offsetX}px, -${offsetY}px) scale(${scale})`;
     imgElement.classList.add("zoomed");
+    scaleFactor = scale; // Устанавливаем новый масштаб
   }
 }
 
